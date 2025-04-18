@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"strings"
+	"sync"
 	"time"
 	totpCmd "tinyauth/cmd/totp"
 	userCmd "tinyauth/cmd/user"
@@ -68,11 +69,17 @@ var rootCmd = &cobra.Command{
 
 		log.Debug().Msg("Parsed OAuth whitelist")
 
-		// Get domain
-		log.Debug().Msg("Getting domain")
-		domain, err := utils.GetUpperDomain(config.AppURL)
-		HandleError(err, "Failed to get upper domain")
-		log.Info().Str("domain", domain).Msg("Using domain for cookie store")
+		// Get domains
+		log.Debug().Msg("Getting domains")
+		urls := strings.Split(config.AppURL, ",")
+		domains := make([]string, len(urls))
+		for i, url := range urls {
+			d, err := utils.GetUpperDomain(url)
+			HandleError(err, "Failed to get upper domain for "+url)
+			domains[i] = d
+		}
+
+		log.Info().Str("domains", strings.Join(domains, ",")).Msg("Configured domains")
 
 		// Create OAuth config
 		oauthConfig := types.OAuthConfig{
@@ -105,12 +112,13 @@ var rootCmd = &cobra.Command{
 
 		// Create auth config
 		authConfig := types.AuthConfig{
+			Mutex:           new(sync.Mutex),
 			Users:           users,
 			OauthWhitelist:  oauthWhitelist,
 			Secret:          config.Secret,
 			CookieSecure:    config.CookieSecure,
 			SessionExpiry:   config.SessionExpiry,
-			Domain:          domain,
+			Domains:         domains,
 			LoginTimeout:    config.LoginTimeout,
 			LoginMaxRetries: config.LoginMaxRetries,
 		}

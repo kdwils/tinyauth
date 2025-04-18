@@ -10,6 +10,7 @@ import (
 	"time"
 	"tinyauth/internal/docker"
 	"tinyauth/internal/types"
+	"tinyauth/internal/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/sessions"
@@ -33,8 +34,16 @@ type Auth struct {
 }
 
 func (auth *Auth) GetSession(c *gin.Context) (*sessions.Session, error) {
-	// Create cookie store
-	store := sessions.NewCookieStore([]byte(auth.Config.Secret))
+	domain, err := utils.GetUpperDomainFromRequest(c.Request)
+	if err != nil {
+		log.Debug().Err(err).Msg("Failed to get upper domain")
+		return nil, err
+	}
+
+	log.Debug().Str("domain", domain).Msg("Getting session for domain")
+
+	secret := auth.Config.GetDomainSecret(domain)
+	store := sessions.NewCookieStore([]byte(secret))
 
 	// Configure cookie store
 	store.Options = &sessions.Options{
@@ -43,7 +52,12 @@ func (auth *Auth) GetSession(c *gin.Context) (*sessions.Session, error) {
 		Secure:   auth.Config.CookieSecure,
 		HttpOnly: true,
 		SameSite: http.SameSiteDefaultMode,
-		Domain:   fmt.Sprintf(".%s", auth.Config.Domain),
+	}
+
+	// if the domain isn't configured let the domain default to restrict it to the auth domain
+	if auth.Config.IsKnownDomain(domain) {
+		log.Debug().Str("domain", domain).Msg("Setting domain for session cookie")
+		store.Options.Domain = fmt.Sprintf(".%s", domain)
 	}
 
 	// Get session

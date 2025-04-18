@@ -2,6 +2,8 @@ package utils_test
 
 import (
 	"fmt"
+	"net/http"
+	"net/url"
 	"os"
 	"reflect"
 	"testing"
@@ -41,23 +43,22 @@ func TestParseUsers(t *testing.T) {
 
 // Test the get upper domain function
 func TestGetUpperDomain(t *testing.T) {
-	t.Log("Testing get upper domain with a valid url")
+	t.Run("valid uri with protocol", func(t *testing.T) {
+		// Test the get upper domain function with a valid url
+		url := "https://sub1.sub2.domain.com:8080"
+		expected := "sub2.domain.com"
 
-	// Test the get upper domain function with a valid url
-	url := "https://sub1.sub2.domain.com:8080"
-	expected := "sub2.domain.com"
+		result, err := utils.GetUpperDomain(url)
+		if err != nil {
+			t.Fatalf("Error getting root url: %v", err)
+		}
 
-	result, err := utils.GetUpperDomain(url)
+		// Check if the result is equal to the expected
+		if expected != result {
+			t.Fatalf("Expected %v, got %v", expected, result)
+		}
+	})
 
-	// Check if there was an error
-	if err != nil {
-		t.Fatalf("Error getting root url: %v", err)
-	}
-
-	// Check if the result is equal to the expected
-	if expected != result {
-		t.Fatalf("Expected %v, got %v", expected, result)
-	}
 }
 
 // Test the read file function
@@ -383,5 +384,81 @@ func TestParseUser(t *testing.T) {
 	// Check if there was an error
 	if err == nil {
 		t.Fatalf("Expected error parsing user")
+	}
+}
+
+func TestGetUpperDomainFromRequest(t *testing.T) {
+	type args struct {
+		req *http.Request
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    string
+		wantErr bool
+	}{
+		{
+			name: "nil request",
+			args: args{
+				req: nil,
+			},
+			want:    "",
+			wantErr: true,
+		},
+		{
+			name: "nil request URL",
+			args: args{
+				req: &http.Request{
+					URL: nil,
+				},
+			},
+			want:    "",
+			wantErr: true,
+		},
+		{
+			name: "valid request with forwarded headers",
+			args: args{
+				req: &http.Request{
+					Host: "sub1.sub2.domain.com",
+					URL: &url.URL{
+						Scheme: "http",
+						Host:   "sub1.sub2.domain.com",
+					},
+					Header: http.Header{
+						"X-Forwarded-Host":  []string{"sub2.domain.com"},
+						"X-Forwarded-Proto": []string{"http"},
+					},
+				},
+			},
+			want:    "domain.com",
+			wantErr: false,
+		},
+		{
+			name: "valid request without forwarded headers",
+			args: args{
+				req: &http.Request{
+					Host: "sub1.sub2.domain.com",
+					URL: &url.URL{
+						Scheme: "http",
+						Host:   "sub1.sub2.domain.com",
+					},
+					Header: http.Header{},
+				},
+			},
+			want:    "sub2.domain.com",
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := utils.GetUpperDomainFromRequest(tt.args.req)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("GetUpperDomainFromRequest() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("GetUpperDomainFromRequest() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }

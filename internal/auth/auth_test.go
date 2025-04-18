@@ -1,11 +1,19 @@
 package auth_test
 
 import (
+	"errors"
+	"net/http"
+	"net/url"
+	"reflect"
+	"sync"
 	"testing"
 	"time"
 	"tinyauth/internal/auth"
 	"tinyauth/internal/docker"
 	"tinyauth/internal/types"
+
+	"github.com/gin-gonic/gin"
+	"github.com/gorilla/sessions"
 )
 
 var config = types.AuthConfig{
@@ -144,4 +152,175 @@ func TestConcurrentLoginAttempts(t *testing.T) {
 	if locked {
 		t.Fatalf("User2 should not be locked after successful login reset")
 	}
+}
+
+func TestAuth_GetSession(t *testing.T) {
+	t.Run("error getting upper domain from request", func(t *testing.T) {
+		config := types.AuthConfig{
+			Mutex:          new(sync.Mutex),
+			Users:          types.Users{},
+			OauthWhitelist: []string{},
+			SessionExpiry:  3600,
+			DomainSecrets:  make(map[string]string),
+			Secret:         "my-global-secret",
+			Domains:        []string{"example.com", "int.example.com"},
+		}
+
+		req := &http.Request{}
+
+		authService := auth.NewAuth(config, nil)
+		session, err := authService.GetSession(&gin.Context{
+			Request: req,
+		})
+		if session != nil {
+			t.Fatalf("TestAuth_GetSession() unexpected session  %v", session)
+		}
+		if err.Error() != "request URL is nil" {
+			t.Fatalf("TestAuth_GetSession() err = %v, expected %v", err, errors.New("request URL is nil"))
+		}
+	})
+
+	t.Run("known domain with global secrets", func(t *testing.T) {
+		config := types.AuthConfig{
+			Mutex:          new(sync.Mutex),
+			Users:          types.Users{},
+			OauthWhitelist: []string{},
+			SessionExpiry:  3600,
+			DomainSecrets:  make(map[string]string),
+			Secret:         "my-global-secret",
+			Domains:        []string{"example.com", "int.example.com"},
+			CookieSecure:   false,
+		}
+
+		req := &http.Request{
+			Host: "test.example.com",
+			URL: &url.URL{
+				Scheme: "http",
+				Host:   "test.example.com",
+			},
+		}
+
+		authService := auth.NewAuth(config, nil)
+		session, err := authService.GetSession(&gin.Context{
+			Request: req,
+		})
+		if err != nil {
+			t.Fatalf("TestAuth_GetSession() unexpected error %v", err)
+		}
+		if session == nil {
+			t.Fatalf("TestAuth_GetSession() expected session: session is nil")
+		}
+		if session.Options == nil {
+			t.Fatalf("TestAuth_GetSession() expected session options: session options is nil")
+		}
+
+		wantSessionOptions := &sessions.Options{
+			Path:     "/",
+			MaxAge:   3600,
+			Secure:   false,
+			HttpOnly: true,
+			SameSite: http.SameSiteDefaultMode,
+			Domain:   ".example.com",
+		}
+
+		if !reflect.DeepEqual(session.Options, wantSessionOptions) {
+			t.Fatalf("TestAuth_GetSession() expected session options: %v, got %v", wantSessionOptions, session.Options)
+		}
+	})
+
+	t.Run("known domain with domain specific secret", func(t *testing.T) {
+		config := types.AuthConfig{
+			Mutex:          new(sync.Mutex),
+			Users:          types.Users{},
+			OauthWhitelist: []string{},
+			SessionExpiry:  3600,
+			DomainSecrets:  map[string]string{"example.com": "my-domain-secret"},
+			Secret:         "my-global-secret",
+			Domains:        []string{"example.com", "int.example.com"},
+			CookieSecure:   false,
+		}
+
+		req := &http.Request{
+			Host: "test.example.com",
+			URL: &url.URL{
+				Scheme: "http",
+				Host:   "test.example.com",
+			},
+		}
+
+		authService := auth.NewAuth(config, nil)
+		session, err := authService.GetSession(&gin.Context{
+			Request: req,
+		})
+		if err != nil {
+			t.Fatalf("TestAuth_GetSession() unexpected error %v", err)
+		}
+		if session == nil {
+			t.Fatalf("TestAuth_GetSession() expected session: session is nil")
+		}
+		if session.Options == nil {
+			t.Fatalf("TestAuth_GetSession() expected session options: session options is nil")
+		}
+
+		wantSessionOptions := &sessions.Options{
+			Path:     "/",
+			MaxAge:   3600,
+			Secure:   false,
+			HttpOnly: true,
+			SameSite: http.SameSiteDefaultMode,
+			Domain:   ".example.com",
+		}
+
+		if !reflect.DeepEqual(session.Options, wantSessionOptions) {
+			t.Fatalf("TestAuth_GetSession() expected session options: %v, got %v", wantSessionOptions, session.Options)
+		}
+	})
+
+	t.Run("unknown domain", func(t *testing.T) {
+		config := types.AuthConfig{
+			Mutex:          new(sync.Mutex),
+			Users:          types.Users{},
+			OauthWhitelist: []string{},
+			SessionExpiry:  3600,
+			DomainSecrets:  make(map[string]string),
+			Secret:         "my-global-secret",
+			Domains:        []string{"example.com", "int.example.com"},
+			CookieSecure:   false,
+		}
+
+		req := &http.Request{
+			Host: "test.not-example.com",
+			URL: &url.URL{
+				Scheme: "http",
+				Host:   "test.not-example.com",
+			},
+		}
+
+		authService := auth.NewAuth(config, nil)
+		session, err := authService.GetSession(&gin.Context{
+			Request: req,
+		})
+		if err != nil {
+			t.Fatalf("TestAuth_GetSession() unexpected error %v", err)
+		}
+		if session == nil {
+			t.Fatalf("TestAuth_GetSession() expected session: session is nil")
+		}
+		if session.Options == nil {
+			t.Fatalf("TestAuth_GetSession() expected session options: session options is nil")
+		}
+
+		wantSessionOptions := &sessions.Options{
+			Path:     "/",
+			MaxAge:   3600,
+			Secure:   false,
+			HttpOnly: true,
+			SameSite: http.SameSiteDefaultMode,
+			Domain:   "",
+		}
+
+		if !reflect.DeepEqual(session.Options, wantSessionOptions) {
+			t.Fatalf("TestAuth_GetSession() expected session options: %v, got %v", wantSessionOptions, session.Options)
+		}
+	})
 }
