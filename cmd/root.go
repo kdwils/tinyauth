@@ -4,7 +4,6 @@ import (
 	"errors"
 	"os"
 	"strings"
-	"sync"
 	"time"
 	totpCmd "tinyauth/cmd/totp"
 	userCmd "tinyauth/cmd/user"
@@ -113,7 +112,6 @@ var rootCmd = &cobra.Command{
 
 		// Create auth config
 		authConfig := types.AuthConfig{
-			Mutex:           new(sync.Mutex),
 			Users:           users,
 			OauthWhitelist:  config.OAuthWhitelist,
 			Secret:          config.Secret,

@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"net/url"
 	"reflect"
-	"sync"
 	"testing"
 	"time"
 	"tinyauth/internal/auth"
@@ -157,7 +156,6 @@ func TestConcurrentLoginAttempts(t *testing.T) {
 func TestAuth_GetSession(t *testing.T) {
 	t.Run("error getting upper domain from request", func(t *testing.T) {
 		config := types.AuthConfig{
-			Mutex:          new(sync.Mutex),
 			Users:          types.Users{},
 			OauthWhitelist: "",
 			SessionExpiry:  3600,
@@ -182,7 +180,6 @@ func TestAuth_GetSession(t *testing.T) {
 
 	t.Run("known domain with global secrets", func(t *testing.T) {
 		config := types.AuthConfig{
-			Mutex:          new(sync.Mutex),
 			Users:          types.Users{},
 			OauthWhitelist: "",
 			SessionExpiry:  3600,
@@ -230,7 +227,6 @@ func TestAuth_GetSession(t *testing.T) {
 
 	t.Run("known domain with domain specific secret", func(t *testing.T) {
 		config := types.AuthConfig{
-			Mutex:          new(sync.Mutex),
 			Users:          types.Users{},
 			OauthWhitelist: "",
 			SessionExpiry:  3600,
@@ -278,7 +274,6 @@ func TestAuth_GetSession(t *testing.T) {
 
 	t.Run("unknown domain", func(t *testing.T) {
 		config := types.AuthConfig{
-			Mutex:          new(sync.Mutex),
 			Users:          types.Users{},
 			OauthWhitelist: "",
 			SessionExpiry:  3600,

@@ -1,13 +1,11 @@
 package types
 
 import (
-	"sync"
 	"testing"
 )
 
 func TestAuthConfig_IsKnownDomain(t *testing.T) {
 	type fields struct {
-		Mutex           *sync.Mutex
 		Users           Users
 		OauthWhitelist  string
 		SessionExpiry   int
@@ -30,7 +28,6 @@ func TestAuthConfig_IsKnownDomain(t *testing.T) {
 		{
 			name: "known domain",
 			fields: fields{
-				Mutex:   new(sync.Mutex),
 				Domains: []string{"example.com", "int.example.com"},
 			},
 			args: args{
@@ -41,7 +38,6 @@ func TestAuthConfig_IsKnownDomain(t *testing.T) {
 		{
 			name: "unknown domain",
 			fields: fields{
-				Mutex:   new(sync.Mutex),
 				Domains: []string{"example.com", "int.example.com"},
 			},
 			args: args{
@@ -53,7 +49,6 @@ func TestAuthConfig_IsKnownDomain(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ac := AuthConfig{
-				Mutex:           tt.fields.Mutex,
 				Users:           tt.fields.Users,
 				OauthWhitelist:  tt.fields.OauthWhitelist,
 				SessionExpiry:   tt.fields.SessionExpiry,
@@ -73,7 +68,6 @@ func TestAuthConfig_IsKnownDomain(t *testing.T) {
 
 func TestAuthConfig_GetDomainSecret(t *testing.T) {
 	type fields struct {
-		Mutex           *sync.Mutex
 		Users           Users
 		OauthWhitelist  string
 		SessionExpiry   int
@@ -96,7 +90,6 @@ func TestAuthConfig_GetDomainSecret(t *testing.T) {
 		{
 			name: "known domain with secret",
 			fields: fields{
-				Mutex:         new(sync.Mutex),
 				DomainSecrets: map[string]string{"example.com": "secret1"},
 				Domains:       []string{"example.com", "int.example.com"},
 				Secret:        "my-secret",
@@ -109,7 +102,6 @@ func TestAuthConfig_GetDomainSecret(t *testing.T) {
 		{
 			name: "known domain without secret",
 			fields: fields{
-				Mutex:         new(sync.Mutex),
 				DomainSecrets: map[string]string{"int.example.com": "secret1"},
 				Domains:       []string{"example.com", "int.example.com"},
 				Secret:        "my-secret",
@@ -123,7 +115,6 @@ func TestAuthConfig_GetDomainSecret(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ac := AuthConfig{
-				Mutex:           tt.fields.Mutex,
 				Users:           tt.fields.Users,
 				OauthWhitelist:  tt.fields.OauthWhitelist,
 				SessionExpiry:   tt.fields.SessionExpiry,

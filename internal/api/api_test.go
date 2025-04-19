@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"strings"
-	"sync"
 	"testing"
 	"tinyauth/internal/api"
 	"tinyauth/internal/auth"
@@ -43,7 +42,6 @@ var authConfig = types.AuthConfig{
 	SessionExpiry:   3600,
 	LoginTimeout:    0,
 	LoginMaxRetries: 0,
-	Mutex:           new(sync.Mutex),
 }
 
 // Cookie

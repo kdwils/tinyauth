@@ -1,14 +1,5 @@
 package types
 
-import (
-	"errors"
-	"sync"
-)
-
-var (
-	ErrUnrecognizedDomain = errors.New("unrecognized domain")
-)
-
 // Config is the configuration for the tinyauth server
 type Config struct {
 	Port                    int               `mapstructure:"port" validate:"required"`
@@ -78,7 +69,6 @@ type APIConfig struct {
 
 // AuthConfig is the configuration for the auth service
 type AuthConfig struct {
-	Mutex           *sync.Mutex
 	Users           Users
 	OauthWhitelist  string
 	SessionExpiry   int
@@ -92,9 +82,6 @@ type AuthConfig struct {
 
 // GetDomainSecret retrieves the secret for a specific domain if it exists, otherwise returns the global default secret
 func (ac AuthConfig) GetDomainSecret(domain string) string {
-	ac.Mutex.Lock()
-	defer ac.Mutex.Unlock()
-
 	s, ok := ac.DomainSecrets[domain]
 	if ok {
 		return s
@@ -105,9 +92,6 @@ func (ac AuthConfig) GetDomainSecret(domain string) string {
 
 // IsKnownDomain checks if the domain exists in the list of configured domains
 func (ac AuthConfig) IsKnownDomain(domain string) bool {
-	ac.Mutex.Lock()
-	defer ac.Mutex.Unlock()
-
 	for _, d := range ac.Domains {
 		if d == domain {
 			return true
