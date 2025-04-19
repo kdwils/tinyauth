@@ -2,7 +2,6 @@ package auth
 
 import (
 	"fmt"
-	"net/http"
 	"regexp"
 	"strings"
 	"sync"
@@ -50,7 +49,6 @@ func (auth *Auth) GetSession(c *gin.Context) (*sessions.Session, error) {
 		MaxAge:   auth.Config.SessionExpiry,
 		Secure:   auth.Config.CookieSecure,
 		HttpOnly: true,
-		SameSite: http.SameSiteDefaultMode,
 	}
 
 	// if the domain isn't configured let the domain default to restrict it to the auth domain
