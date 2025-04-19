@@ -158,7 +158,7 @@ func ParseFileToLine(content string) string {
 }
 
 // GetDomainSecrets retrieves the domain secrets from the environment variables or a file.
-// The keys are the domain names and the value is the secrets.
+// The keys are the domain names and the values are the secrets.
 // Secrets from file take precedence over environment variables.
 func GetDomainSecrets(domains []string, file string) map[string]string {
 	filesLines := make([]string, 0)
@@ -216,7 +216,7 @@ func GetDomainSecrets(domains []string, file string) map[string]string {
 	return secrets
 }
 
-// remove "" and ” from a line
+// remove " " and ' ' from a line
 func trimQuotes(line string) string {
 	line = strings.TrimSpace(line)
 	line = strings.Trim(line, "\"'")
