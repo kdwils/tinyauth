@@ -43,22 +43,23 @@ func TestParseUsers(t *testing.T) {
 
 // Test the get upper domain function
 func TestGetUpperDomain(t *testing.T) {
-	t.Run("valid uri with protocol", func(t *testing.T) {
-		// Test the get upper domain function with a valid url
-		url := "https://sub1.sub2.domain.com:8080"
-		expected := "sub2.domain.com"
+	t.Log("Testing get upper domain with a valid url")
 
-		result, err := utils.GetUpperDomain(url)
-		if err != nil {
-			t.Fatalf("Error getting root url: %v", err)
-		}
+	// Test the get upper domain function with a valid url
+	url := "https://sub1.sub2.domain.com:8080"
+	expected := "sub2.domain.com"
 
-		// Check if the result is equal to the expected
-		if expected != result {
-			t.Fatalf("Expected %v, got %v", expected, result)
-		}
-	})
+	result, err := utils.GetUpperDomain(url)
 
+	// Check if there was an error
+	if err != nil {
+		t.Fatalf("Error getting root url: %v", err)
+	}
+
+	// Check if the result is equal to the expected
+	if expected != result {
+		t.Fatalf("Expected %v, got %v", expected, result)
+	}
 }
 
 // Test the read file function
