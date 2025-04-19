@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
-	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -150,20 +149,7 @@ func (auth *Auth) RecordLoginAttempt(identifier string, success bool) {
 }
 
 func (auth *Auth) EmailWhitelisted(emailSrc string) bool {
-	// If the whitelist is empty, allow all emails
-	if len(auth.Config.OauthWhitelist) == 0 {
-		return true
-	}
-
-	// Loop through the whitelist and return true if the email matches
-	for _, email := range auth.Config.OauthWhitelist {
-		if email == emailSrc {
-			return true
-		}
-	}
-
-	// If no emails match, return false
-	return false
+	return utils.CheckWhitelist(auth.Config.OauthWhitelist, emailSrc)
 }
 
 func (auth *Auth) CreateSessionCookie(c *gin.Context, data *types.SessionCookie) error {
@@ -192,7 +178,6 @@ func (auth *Auth) CreateSessionCookie(c *gin.Context, data *types.SessionCookie)
 	session.Values["provider"] = data.Provider
 	session.Values["expiry"] = time.Now().Add(time.Duration(sessionExpiry) * time.Second).Unix()
 	session.Values["totpPending"] = data.TotpPending
-	session.Values["redirectURI"] = data.RedirectURI
 
 	// Save session
 	err = session.Save(c.Request, c.Writer)
@@ -244,11 +229,10 @@ func (auth *Auth) GetSessionCookie(c *gin.Context) (types.SessionCookie, error) 
 	// Get data from session
 	username, usernameOk := session.Values["username"].(string)
 	provider, providerOK := session.Values["provider"].(string)
-	redirectURI, redirectOK := session.Values["redirectURI"].(string)
 	expiry, expiryOk := session.Values["expiry"].(int64)
 	totpPending, totpPendingOk := session.Values["totpPending"].(bool)
 
-	if !usernameOk || !providerOK || !expiryOk || !redirectOK || !totpPendingOk {
+	if !usernameOk || !providerOK || !expiryOk || !totpPendingOk {
 		log.Warn().Msg("Session cookie is missing data")
 		return types.SessionCookie{}, nil
 	}
@@ -271,7 +255,6 @@ func (auth *Auth) GetSessionCookie(c *gin.Context) (types.SessionCookie, error) 
 		Username:    username,
 		Provider:    provider,
 		TotpPending: totpPending,
-		RedirectURI: redirectURI,
 	}, nil
 }
 
@@ -297,27 +280,14 @@ func (auth *Auth) ResourceAllowed(c *gin.Context, context types.UserContext) (bo
 
 	// Check if oauth is allowed
 	if context.OAuth {
-		if len(labels.OAuthWhitelist) == 0 {
-			return true, nil
-		}
 		log.Debug().Msg("Checking OAuth whitelist")
-		if slices.Contains(labels.OAuthWhitelist, context.Username) {
-			return true, nil
-		}
+		return utils.CheckWhitelist(labels.OAuthWhitelist, context.Username), nil
 	}
 
-	// Check if user is allowed
-	if len(labels.Users) != 0 {
-		log.Debug().Msg("Checking users")
-		if slices.Contains(labels.Users, context.Username) {
-			return true, nil
-		}
-	} else {
-		return true, nil
-	}
+	// Check users
+	log.Debug().Msg("Checking users")
 
-	// Not allowed
-	return false, nil
+	return utils.CheckWhitelist(labels.Users, context.Username), nil
 }
 
 func (auth *Auth) AuthEnabled(c *gin.Context) (bool, error) {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 	"tinyauth/internal/auth"
 	"tinyauth/internal/docker"
 	"tinyauth/internal/hooks"
@@ -445,6 +446,7 @@ func (h *Handlers) AppHandler(c *gin.Context) {
 		DisableContinue:     h.Config.DisableContinue,
 		Title:               h.Config.Title,
 		GenericName:         h.Config.GenericName,
+		Domain:              h.Config.Domain,
 	}
 
 	// Return app context
@@ -514,10 +516,16 @@ func (h *Handlers) OauthUrlHandler(c *gin.Context) {
 
 	log.Debug().Str("provider", request.Provider).Msg("Got provider")
 
+	// Create state
+	state := provider.GenerateState()
+
 	// Get auth URL
-	authURL := provider.GetAuthURL()
+	authURL := provider.GetAuthURL(state)
 
 	log.Debug().Msg("Got auth URL")
+
+	// Set CSRF cookie
+	c.SetCookie("tinyauth-csrf", state, int(time.Hour.Seconds()), "/", "", h.Config.CookieSecure, true)
 
 	// Get redirect URI
 	redirectURI := c.Query("redirect_uri")
@@ -525,9 +533,7 @@ func (h *Handlers) OauthUrlHandler(c *gin.Context) {
 	// Set redirect cookie if redirect URI is provided
 	if redirectURI != "" {
 		log.Debug().Str("redirectURI", redirectURI).Msg("Setting redirect cookie")
-		h.Auth.CreateSessionCookie(c, &types.SessionCookie{
-			RedirectURI: redirectURI,
-		})
+		c.SetCookie("tinyauth-redirect", redirectURI, int(time.Hour.Seconds()), "/", "", h.Config.CookieSecure, true)
 	}
 
 	// Return auth URL
@@ -554,15 +560,32 @@ func (h *Handlers) OauthCallbackHandler(c *gin.Context) {
 
 	log.Debug().Interface("provider", providerName.Provider).Msg("Got provider name")
 
-	// Get code
-	code := c.Query("code")
+	// Get state
+	state := c.Query("state")
 
-	// Code empty so redirect to error
-	if code == "" {
-		log.Error().Msg("No code provided")
+	// Get CSRF cookie
+	csrfCookie, err := c.Cookie("tinyauth-csrf")
+
+	if err != nil {
+		log.Debug().Msg("No CSRF cookie")
 		c.Redirect(http.StatusPermanentRedirect, fmt.Sprintf("%s/error", h.Config.AppURL))
 		return
 	}
+
+	log.Debug().Str("csrfCookie", csrfCookie).Msg("Got CSRF cookie")
+
+	// Check if CSRF cookie is valid
+	if csrfCookie != state {
+		log.Warn().Msg("Invalid CSRF cookie or CSRF cookie does not match with the state")
+		c.Redirect(http.StatusPermanentRedirect, fmt.Sprintf("%s/error", h.Config.AppURL))
+		return
+	}
+
+	// Clean up CSRF cookie
+	c.SetCookie("tinyauth-csrf", "", -1, "/", "", h.Config.CookieSecure, true)
+
+	// Get code
+	code := c.Query("code")
 
 	log.Debug().Msg("Got code")
 
@@ -623,25 +646,26 @@ func (h *Handlers) OauthCallbackHandler(c *gin.Context) {
 
 	log.Debug().Msg("Email whitelisted")
 
-	// Get redirect URI
-	cookie, err := h.Auth.GetSessionCookie(c)
-
 	// Create session cookie (also cleans up redirect cookie)
 	h.Auth.CreateSessionCookie(c, &types.SessionCookie{
 		Username: email,
 		Provider: providerName.Provider,
 	})
 
-	// If it is empty it means that no redirect_uri was provided to the login screen so we just log in
+	// Check if we have a redirect URI
+	redirectCookie, err := c.Cookie("tinyauth-redirect")
+
 	if err != nil {
+		log.Debug().Msg("No redirect cookie")
 		c.Redirect(http.StatusPermanentRedirect, h.Config.AppURL)
+		return
 	}
 
-	log.Debug().Str("redirectURI", cookie.RedirectURI).Msg("Got redirect URI")
+	log.Debug().Str("redirectURI", redirectCookie).Msg("Got redirect URI")
 
 	// Build query
 	queries, err := query.Values(types.LoginQuery{
-		RedirectURI: cookie.RedirectURI,
+		RedirectURI: redirectCookie,
 	})
 
 	log.Debug().Msg("Got redirect query")
@@ -652,6 +676,9 @@ func (h *Handlers) OauthCallbackHandler(c *gin.Context) {
 		c.Redirect(http.StatusPermanentRedirect, fmt.Sprintf("%s/error", h.Config.AppURL))
 		return
 	}
+
+	// Clean up redirect cookie
+	c.SetCookie("tinyauth-redirect", "", -1, "/", "", h.Config.CookieSecure, true)
 
 	// Redirect to continue with the redirect URI
 	c.Redirect(http.StatusPermanentRedirect, fmt.Sprintf("%s/continue?%s", h.Config.AppURL, queries.Encode()))

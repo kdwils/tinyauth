@@ -18,7 +18,7 @@ import (
 
 var config = types.AuthConfig{
 	Users:          types.Users{},
-	OauthWhitelist: []string{},
+	OauthWhitelist: "",
 	SessionExpiry:  3600,
 }
 
@@ -159,7 +159,7 @@ func TestAuth_GetSession(t *testing.T) {
 		config := types.AuthConfig{
 			Mutex:          new(sync.Mutex),
 			Users:          types.Users{},
-			OauthWhitelist: []string{},
+			OauthWhitelist: "",
 			SessionExpiry:  3600,
 			DomainSecrets:  make(map[string]string),
 			Secret:         "my-global-secret",
@@ -184,7 +184,7 @@ func TestAuth_GetSession(t *testing.T) {
 		config := types.AuthConfig{
 			Mutex:          new(sync.Mutex),
 			Users:          types.Users{},
-			OauthWhitelist: []string{},
+			OauthWhitelist: "",
 			SessionExpiry:  3600,
 			DomainSecrets:  make(map[string]string),
 			Secret:         "my-global-secret",
@@ -232,7 +232,7 @@ func TestAuth_GetSession(t *testing.T) {
 		config := types.AuthConfig{
 			Mutex:          new(sync.Mutex),
 			Users:          types.Users{},
-			OauthWhitelist: []string{},
+			OauthWhitelist: "",
 			SessionExpiry:  3600,
 			DomainSecrets:  map[string]string{"example.com": "my-domain-secret"},
 			Secret:         "my-global-secret",
@@ -280,7 +280,7 @@ func TestAuth_GetSession(t *testing.T) {
 		config := types.AuthConfig{
 			Mutex:          new(sync.Mutex),
 			Users:          types.Users{},
-			OauthWhitelist: []string{},
+			OauthWhitelist: "",
 			SessionExpiry:  3600,
 			DomainSecrets:  make(map[string]string),
 			Secret:         "my-global-secret",

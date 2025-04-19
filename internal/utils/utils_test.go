@@ -287,15 +287,19 @@ func TestGetTinyauthLabels(t *testing.T) {
 	// Test the get tinyauth labels function with a valid map
 	labels := map[string]string{
 		"tinyauth.users":           "user1,user2",
-		"tinyauth.oauth.whitelist": "user1,user2",
+		"tinyauth.oauth.whitelist": "/regex/",
 		"tinyauth.allowed":         "random",
 		"random":                   "random",
+		"tinyauth.headers":         "X-Header=value",
 	}
 
 	expected := types.TinyauthLabels{
-		Users:          []string{"user1", "user2"},
-		OAuthWhitelist: []string{"user1", "user2"},
+		Users:          "user1,user2",
+		OAuthWhitelist: "/regex/",
 		Allowed:        "random",
+		Headers: map[string]string{
+			"X-Header": "value",
+		},
 	}
 
 	result := utils.GetTinyauthLabels(labels)
@@ -571,5 +575,83 @@ func TestGetDomainSecrets(t *testing.T) {
 				t.Errorf("GetDomainSecrets() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+// Test the whitelist function
+func TestCheckWhitelist(t *testing.T) {
+	t.Log("Testing check whitelist with a comma whitelist")
+
+	// Create variables
+	whitelist := "user1,user2,user3"
+	str := "user1"
+	expected := true
+
+	// Test the check whitelist function
+	result := utils.CheckWhitelist(whitelist, str)
+
+	// Check if the result is equal to the expected
+	if result != expected {
+		t.Fatalf("Expected %v, got %v", expected, result)
+	}
+
+	t.Log("Testing check whitelist with a regex whitelist")
+
+	// Create variables
+	whitelist = "/^user[0-9]+$/"
+	str = "user1"
+	expected = true
+
+	// Test the check whitelist function
+	result = utils.CheckWhitelist(whitelist, str)
+
+	// Check if the result is equal to the expected
+	if result != expected {
+		t.Fatalf("Expected %v, got %v", expected, result)
+	}
+
+	t.Log("Testing check whitelist with an empty whitelist")
+
+	// Create variables
+	whitelist = ""
+	str = "user1"
+	expected = true
+
+	// Test the check whitelist function
+	result = utils.CheckWhitelist(whitelist, str)
+
+	// Check if the result is equal to the expected
+	if result != expected {
+		t.Fatalf("Expected %v, got %v", expected, result)
+	}
+
+	t.Log("Testing check whitelist with an invalid regex whitelist")
+
+	// Create variables
+	whitelist = "/^user[0-9+$/"
+	str = "user1"
+	expected = false
+
+	// Test the check whitelist function
+	result = utils.CheckWhitelist(whitelist, str)
+
+	// Check if the result is equal to the expected
+	if result != expected {
+		t.Fatalf("Expected %v, got %v", expected, result)
+	}
+
+	t.Log("Testing check whitelist with a non matching whitelist")
+
+	// Create variables
+	whitelist = "user1,user2,user3"
+	str = "user4"
+	expected = false
+
+	// Test the check whitelist function
+	result = utils.CheckWhitelist(whitelist, str)
+
+	// Check if the result is equal to the expected
+	if result != expected {
+		t.Fatalf("Expected %v, got %v", expected, result)
 	}
 }

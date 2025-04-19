@@ -48,6 +48,8 @@ type Config struct {
 // Server configuration
 type HandlersConfig struct {
 	AppURL          string
+	Domain          string
+	CookieSecure    bool
 	DisableContinue bool
 	GenericName     string
 	Title           string
@@ -78,7 +80,7 @@ type APIConfig struct {
 type AuthConfig struct {
 	Mutex           *sync.Mutex
 	Users           Users
-	OauthWhitelist  []string
+	OauthWhitelist  string
 	SessionExpiry   int
 	DomainSecrets   map[string]string
 	Secret          string // global secret

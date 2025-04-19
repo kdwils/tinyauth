@@ -27,13 +27,12 @@ type SessionCookie struct {
 	Username    string
 	Provider    string
 	TotpPending bool
-	RedirectURI string
 }
 
 // TinyauthLabels is the labels for the tinyauth container
 type TinyauthLabels struct {
-	OAuthWhitelist []string
-	Users          []string
+	OAuthWhitelist string
+	Users          string
 	Allowed        string
 	Headers        map[string]string
 }

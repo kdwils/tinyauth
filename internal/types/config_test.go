@@ -9,7 +9,7 @@ func TestAuthConfig_IsKnownDomain(t *testing.T) {
 	type fields struct {
 		Mutex           *sync.Mutex
 		Users           Users
-		OauthWhitelist  []string
+		OauthWhitelist  string
 		SessionExpiry   int
 		DomainSecrets   map[string]string
 		Secret          string
@@ -75,7 +75,7 @@ func TestAuthConfig_GetDomainSecret(t *testing.T) {
 	type fields struct {
 		Mutex           *sync.Mutex
 		Users           Users
-		OauthWhitelist  []string
+		OauthWhitelist  string
 		SessionExpiry   int
 		DomainSecrets   map[string]string
 		Secret          string

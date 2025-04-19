@@ -74,12 +74,12 @@ var rootCmd = &cobra.Command{
 			HandleError(errors.New("no users or OAuth configured"), "No users or OAuth configured")
 		}
 
-		// Create oauth whitelist
-		oauthWhitelist := utils.Filter(strings.Split(config.OAuthWhitelist, ","), func(val string) bool {
-			return val != ""
-		})
-
 		log.Debug().Msg("Parsed OAuth whitelist")
+		// Get domain
+		log.Debug().Msg("Getting domain")
+		domain, err := utils.GetUpperDomain(config.AppURL)
+		HandleError(err, "Failed to get upper domain")
+		log.Info().Str("domain", domain).Msg("Using domain for cookie store")
 
 		// Create OAuth config
 		oauthConfig := types.OAuthConfig{
@@ -102,6 +102,8 @@ var rootCmd = &cobra.Command{
 			DisableContinue: config.DisableContinue,
 			Title:           config.Title,
 			GenericName:     config.GenericName,
+			CookieSecure:    config.CookieSecure,
+			Domain:          domain,
 		}
 
 		// Create api config
@@ -114,7 +116,7 @@ var rootCmd = &cobra.Command{
 		authConfig := types.AuthConfig{
 			Mutex:           new(sync.Mutex),
 			Users:           users,
-			OauthWhitelist:  oauthWhitelist,
+			OauthWhitelist:  config.OAuthWhitelist,
 			Secret:          config.Secret,
 			CookieSecure:    config.CookieSecure,
 			SessionExpiry:   config.SessionExpiry,
