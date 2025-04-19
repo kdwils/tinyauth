@@ -74,7 +74,6 @@ var rootCmd = &cobra.Command{
 			HandleError(errors.New("no users or OAuth configured"), "No users or OAuth configured")
 		}
 
-		log.Debug().Msg("Parsed OAuth whitelist")
 		// Get domain
 		log.Debug().Msg("Getting domain")
 		domain, err := utils.GetUpperDomain(config.AppURL)
