@@ -448,6 +448,21 @@ func TestGetUpperDomainFromRequest(t *testing.T) {
 			want:    "sub2.domain.com",
 			wantErr: false,
 		},
+		{
+			name: "short domain",
+			args: args{
+				req: &http.Request{
+					Host: "domain.com",
+					URL: &url.URL{
+						Scheme: "http",
+						Host:   "domain.com",
+					},
+					Header: http.Header{},
+				},
+			},
+			want:    "domain.com",
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

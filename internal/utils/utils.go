@@ -48,8 +48,14 @@ func ParseUsers(users string) (types.Users, error) {
 	return usersParsed, nil
 }
 
-// GetUpperDomainFromRequest parses a hostname and returns the upper domain. Respects the X-Forwarded-Host and X-Forwarded-Proto headers.
-// (e.g. sub1.sub2.domain.com -> sub2.domain.com)
+// GetUpperDomainFromRequest parses a hostname and returns the upper domain.
+// Respects the X-Forwarded-Host and X-Forwarded-Proto headers.
+//
+// sub1.sub2.domain.com -> sub2.domain.com
+//
+// sub2.domain.com -> domain.com
+//
+// domain.com -> domain.com
 func GetUpperDomainFromRequest(req *http.Request) (string, error) {
 	if req == nil {
 		return "", errors.New("request is nil")
@@ -61,15 +67,13 @@ func GetUpperDomainFromRequest(req *http.Request) (string, error) {
 	host := req.Host
 	forwardedHost := req.Header.Get("X-Forwarded-Host")
 	if forwardedHost != "" {
-		// If the header is not set, fall back to the Host header of the request
 		host = forwardedHost
 	}
 
 	scheme := req.URL.Scheme
-	forwardedProtocl := req.Header.Get("X-Forwarded-Proto")
-	if forwardedProtocl != "" {
-		// If the header is not set, fall back to the Scheme of the request
-		scheme = forwardedProtocl
+	forwardedProtocol := req.Header.Get("X-Forwarded-Proto")
+	if forwardedProtocol != "" {
+		scheme = forwardedProtocol
 	}
 
 	url := url.URL{
@@ -77,24 +81,36 @@ func GetUpperDomainFromRequest(req *http.Request) (string, error) {
 		Host:   host,
 	}
 
-	log.Debug().Str("uri", url.String()).Msg("Parsed host")
+	hostname := url.Hostname()
 
-	return getUpperDomainFromHost(url.Hostname()), nil
+	splitHostname := strings.Split(hostname, ".")
+
+	// If we have 2 or fewer parts (e.g., domain.com) then return the full host instead of the upper domain
+	if len(splitHostname) <= 2 {
+		return hostname, nil
+	}
+
+	return strings.Join(splitHostname[1:], "."), nil
 }
 
 // Get upper domain parses a hostname and returns the upper domain (e.g. sub1.sub2.domain.com -> sub2.domain.com)
 func GetUpperDomain(urlSrc string) (string, error) {
+	// Make sure the url is valid
 	urlParsed, err := url.Parse(urlSrc)
+
+	// Check if there was an error
 	if err != nil {
 		return "", err
 	}
 
-	return getUpperDomainFromHost(urlParsed.Hostname()), nil
-}
+	// Split the hostname by period
+	urlSplitted := strings.Split(urlParsed.Hostname(), ".")
 
-func getUpperDomainFromHost(host string) string {
-	splitHost := strings.Split(host, ".")
-	return strings.Join(splitHost[1:], ".")
+	// Get the last part of the url
+	urlFinal := strings.Join(urlSplitted[1:], ".")
+
+	// Return the root domain
+	return urlFinal, nil
 }
 
 // Reads a file and returns the contents
