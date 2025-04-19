@@ -2,6 +2,7 @@ package utils
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"os"
@@ -139,6 +140,72 @@ func ParseFileToLine(content string) string {
 	return strings.Join(users, ",")
 }
 
+// GetDomainSecrets retrieves the domain secrets from the environment variables or a file.
+// The keys are the domain names and the value is the secrets.
+// Secrets from file take precedence over environment variables.
+func GetDomainSecrets(domains []string, file string) map[string]string {
+	filesLines := make([]string, 0)
+	if file != "" {
+		contents, err := ReadFile(file)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to read domain secrets file")
+			return nil
+		}
+
+		lines := strings.Split(contents, "\n")
+		for _, line := range lines {
+			if strings.TrimSpace(line) == "" {
+				continue
+			}
+			log.Debug().Str("line", line).Msg("Parsing domain secrets file")
+			filesLines = append(filesLines, strings.TrimSpace(line))
+		}
+	}
+
+	secrets := make(map[string]string)
+	for _, domain := range domains {
+		// example.com -> EXAMPLE_COM
+		domainKey := strings.ToUpper(strings.ReplaceAll(domain, ".", "_"))
+		// EXAMPLE_COM_SECRET = "my-example-com-secret"
+		domainSpecificKey := fmt.Sprintf("%s_SECRET", domainKey)
+
+		for _, line := range filesLines {
+			before, after, found := strings.Cut(line, "=")
+			if !found {
+				continue
+			}
+
+			if before != domainSpecificKey {
+				continue
+			}
+
+			secret := trimQuotes(after)
+			secrets[domain] = strings.TrimSpace(secret)
+		}
+
+		// dont overwrite the secret if it is already set by the secret file
+		if secrets[domain] != "" {
+			log.Debug().Str("domain", domain).Msg("Secret already set by file")
+			continue
+		}
+
+		envSecret := os.Getenv(domainSpecificKey)
+		if envSecret != "" {
+			secrets[domain] = envSecret
+		}
+
+	}
+
+	return secrets
+}
+
+// remove "" and ” from a line
+func trimQuotes(line string) string {
+	line = strings.TrimSpace(line)
+	line = strings.Trim(line, "\"'")
+	return line
+}
+
 // Get the secret from the config or file
 func GetSecret(conf string, file string) string {
 	// If neither the config or file is set, return an empty string
@@ -153,7 +220,6 @@ func GetSecret(conf string, file string) string {
 
 	// If the file is set, read the file
 	contents, err := ReadFile(file)
-
 	// Check if there was an error
 	if err != nil {
 		return ""

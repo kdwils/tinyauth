@@ -38,11 +38,14 @@ var rootCmd = &cobra.Command{
 		err := viper.Unmarshal(&config)
 		HandleError(err, "Failed to parse config")
 
-		// Secrets
-		config.Secret = utils.GetSecret(config.Secret, config.SecretFile)
-		config.GithubClientSecret = utils.GetSecret(config.GithubClientSecret, config.GithubClientSecretFile)
-		config.GoogleClientSecret = utils.GetSecret(config.GoogleClientSecret, config.GoogleClientSecretFile)
-		config.GenericClientSecret = utils.GetSecret(config.GenericClientSecret, config.GenericClientSecretFile)
+		// Get domains
+		urls := strings.Split(config.AppURL, ",")
+		domains := make([]string, len(urls))
+		for i, url := range urls {
+			d, err := utils.GetUpperDomain(url)
+			HandleError(err, "Failed to get upper domain for "+url)
+			domains[i] = d
+		}
 
 		// Validate config
 		validator := validator.New()
@@ -52,6 +55,15 @@ var rootCmd = &cobra.Command{
 		// Logger
 		log.Logger = log.Level(zerolog.Level(config.LogLevel))
 		log.Info().Str("version", assets.Version).Msg("Starting tinyauth")
+
+		log.Info().Str("domains", strings.Join(domains, ",")).Msg("Parsed domains")
+
+		// Secrets
+		config.Secret = utils.GetSecret(config.Secret, config.SecretFile)
+		config.DomainSecrets = utils.GetDomainSecrets(domains, config.DomainSecretsFile)
+		config.GithubClientSecret = utils.GetSecret(config.GithubClientSecret, config.GithubClientSecretFile)
+		config.GoogleClientSecret = utils.GetSecret(config.GoogleClientSecret, config.GoogleClientSecretFile)
+		config.GenericClientSecret = utils.GetSecret(config.GenericClientSecret, config.GenericClientSecretFile)
 
 		// Users
 		log.Info().Msg("Parsing users")
@@ -68,18 +80,6 @@ var rootCmd = &cobra.Command{
 		})
 
 		log.Debug().Msg("Parsed OAuth whitelist")
-
-		// Get domains
-		log.Debug().Msg("Getting domains")
-		urls := strings.Split(config.AppURL, ",")
-		domains := make([]string, len(urls))
-		for i, url := range urls {
-			d, err := utils.GetUpperDomain(url)
-			HandleError(err, "Failed to get upper domain for "+url)
-			domains[i] = d
-		}
-
-		log.Info().Str("domains", strings.Join(domains, ",")).Msg("Configured domains")
 
 		// Create OAuth config
 		oauthConfig := types.OAuthConfig{
@@ -215,6 +215,7 @@ func init() {
 	viper.BindEnv("address", "ADDRESS")
 	viper.BindEnv("secret", "SECRET")
 	viper.BindEnv("secret-file", "SECRET_FILE")
+	viper.BindEnv("domain-secrets-file", "DOMAIN_SECRETS_FILE")
 	viper.BindEnv("app-url", "APP_URL")
 	viper.BindEnv("users", "USERS")
 	viper.BindEnv("users-file", "USERS_FILE")

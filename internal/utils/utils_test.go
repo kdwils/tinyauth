@@ -462,3 +462,99 @@ func TestGetUpperDomainFromRequest(t *testing.T) {
 		})
 	}
 }
+
+func TestGetDomainSecrets(t *testing.T) {
+	type args struct {
+		domains      []string
+		fileContents string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		envVars map[string]string
+		want    map[string]string
+	}{
+		{
+			name: "empty inputs",
+			args: args{
+				domains:      []string{},
+				fileContents: "",
+			},
+			want: map[string]string{},
+		},
+		{
+			name: "domains with env vars",
+			args: args{
+				domains:      []string{"example.com", "test.com"},
+				fileContents: "NOT_MY_DOMAIN_SECRET=secret1",
+			},
+			envVars: map[string]string{
+				"EXAMPLE_COM_SECRET": "secret1",
+				"TEST_COM_SECRET":    "secret2",
+			},
+			want: map[string]string{
+				"example.com": "secret1",
+				"test.com":    "secret2",
+			},
+		},
+		{
+			name: "domains with file and env vars",
+			args: args{
+				domains:      []string{"example.com", "test.com"},
+				fileContents: "EXAMPLE_COM_SECRET=secret1\nTEST_COM_SECRET=secret2",
+			},
+			envVars: map[string]string{
+				"EXAMPLE_COM_SECRET": "secret_env_var",
+			},
+			want: map[string]string{
+				"example.com": "secret1",
+				"test.com":    "secret2",
+			},
+		},
+		{
+			name: "domains with file and env vars with quotes",
+			args: args{
+				domains:      []string{"example.com", "test.com"},
+				fileContents: "EXAMPLE_COM_SECRET=\"secret1\"\nTEST_COM_SECRET='secret2'",
+			},
+			envVars: map[string]string{
+				"EXAMPLE_COM_SECRET": "secret_env_var",
+			},
+			want: map[string]string{
+				"example.com": "secret1",
+				"test.com":    "secret2",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			for k, v := range tt.envVars {
+				os.Setenv(k, v)
+				defer os.Unsetenv(k)
+			}
+
+			var tempFile string
+			// Create test file if needed
+			if tt.args.fileContents != "" {
+				f, err := os.CreateTemp("", "testfile")
+				if err != nil {
+					t.Fatalf("Failed to create temp file: %v", err)
+				}
+				defer os.Remove(f.Name())
+				// Write the contents to the file
+				_, err = f.WriteString(tt.args.fileContents)
+				if err != nil {
+					t.Fatalf("Failed to write to temp file: %v", err)
+				}
+
+				tempFile = f.Name()
+			}
+
+			got := utils.GetDomainSecrets(tt.args.domains, tempFile)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("GetDomainSecrets() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

@@ -61,7 +61,7 @@ func (auth *Auth) GetSession(c *gin.Context) (*sessions.Session, error) {
 	}
 
 	// Get session
-	session, err := store.Get(c.Request, "tinyauth")
+	session, err := store.Get(c.Request, fmt.Sprintf("tinyauth-%s", domain))
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get session")
 		return nil, err
