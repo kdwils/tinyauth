@@ -174,7 +174,6 @@ func GetDomainSecrets(domains []string, file string) map[string]string {
 			if strings.TrimSpace(line) == "" {
 				continue
 			}
-			log.Debug().Str("line", line).Msg("Parsing domain secrets file")
 			filesLines = append(filesLines, strings.TrimSpace(line))
 		}
 	}
@@ -202,7 +201,6 @@ func GetDomainSecrets(domains []string, file string) map[string]string {
 
 		// dont overwrite the secret if it is already set by the secret file
 		if secrets[domain] != "" {
-			log.Debug().Str("domain", domain).Msg("Secret already set by file")
 			continue
 		}
 
@@ -210,7 +208,6 @@ func GetDomainSecrets(domains []string, file string) map[string]string {
 		if envSecret != "" {
 			secrets[domain] = envSecret
 		}
-
 	}
 
 	return secrets
