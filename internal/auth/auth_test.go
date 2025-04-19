@@ -216,7 +216,6 @@ func TestAuth_GetSession(t *testing.T) {
 			MaxAge:   3600,
 			Secure:   false,
 			HttpOnly: true,
-			SameSite: http.SameSiteDefaultMode,
 			Domain:   ".example.com",
 		}
 
@@ -263,7 +262,6 @@ func TestAuth_GetSession(t *testing.T) {
 			MaxAge:   3600,
 			Secure:   false,
 			HttpOnly: true,
-			SameSite: http.SameSiteDefaultMode,
 			Domain:   ".example.com",
 		}
 
@@ -310,7 +308,6 @@ func TestAuth_GetSession(t *testing.T) {
 			MaxAge:   3600,
 			Secure:   false,
 			HttpOnly: true,
-			SameSite: http.SameSiteDefaultMode,
 			Domain:   "",
 		}
 

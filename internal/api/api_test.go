@@ -37,6 +37,7 @@ var handlersConfig = types.HandlersConfig{
 var authConfig = types.AuthConfig{
 	Users:           types.Users{},
 	OauthWhitelist:  "",
+	Domains:         []string{"test-domain.com"},
 	Secret:          "super-secret-api-thing-for-tests", // It is 32 chars long
 	CookieSecure:    false,
 	SessionExpiry:   3600,
@@ -230,6 +231,9 @@ func TestUserContext(t *testing.T) {
 		Name:  "tinyauth",
 		Value: cookie,
 	})
+
+	req.Header.Set("X-Forwarded-Host", "test-domain.com")
+	req.Header.Set("X-Forwarded-Proto", "http")
 
 	// Serve the request
 	api.Router.ServeHTTP(recorder, req)
